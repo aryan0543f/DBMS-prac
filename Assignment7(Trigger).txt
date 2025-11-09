@@ -1,0 +1,155 @@
+
+
+-- Create Library table (main table)
+CREATE TABLE Library(
+    Roll_no NUMBER(10) PRIMARY KEY,
+    name VARCHAR2(50),
+    issuedate DATE,
+    book VARCHAR2(10),
+    status CHAR(1)
+);
+
+-- Create Library_Audit table (audit trail table)
+CREATE TABLE Library_Audit(
+    Audit_ID NUMBER(10),
+    Roll_no NUMBER(10),
+    name VARCHAR2(50),
+    issuedate DATE,
+    book VARCHAR2(10),
+    status CHAR(1),
+    Operation VARCHAR2(10),    -- UPDATE or DELETE
+    Operation_Date TIMESTAMP   -- When the operation happened
+);
+
+-- Create sequence for audit ID
+CREATE SEQUENCE audit_seq START WITH 1 INCREMENT BY 1;
+
+-- Insert sample data in Library table
+INSERT INTO Library VALUES (101, 'Sita', TO_DATE('22-Dec-2022', 'DD-MON-YYYY'), 'TOC', 'I');
+INSERT INTO Library VALUES (102, 'Mita', TO_DATE('20-Sep-2023', 'DD-MON-YYYY'), 'DBMS', 'I');
+INSERT INTO Library VALUES (103, 'Gita', TO_DATE('12-Nov-2023', 'DD-MON-YYYY'), 'AI', 'I');
+INSERT INTO Library VALUES (104, 'Rita', TO_DATE('15-Jan-2024', 'DD-MON-YYYY'), 'CN', 'I');
+
+-- Display initial data
+SELECT 'Initial Library Data:' AS Info FROM DUAL;
+SELECT * FROM Library ORDER BY Roll_no;
+
+CREATE OR REPLACE TRIGGER library_audit_trigger
+    BEFORE UPDATE OR DELETE ON Library
+    FOR EACH ROW
+BEGIN
+    -- For UPDATE operations: Store old values before update
+    IF UPDATING THEN
+        INSERT INTO Library_Audit VALUES (
+            audit_seq.NEXTVAL,           -- Auto-generated audit ID
+            :OLD.Roll_no,                -- Old roll number
+            :OLD.name,                   -- Old name
+            :OLD.issuedate,              -- Old issue date
+            :OLD.book,                   -- Old book
+            :OLD.status,                 -- Old status
+            'UPDATE',                    -- Operation type
+            SYSTIMESTAMP                 -- Current timestamp
+        );
+    END IF;
+    
+    -- For DELETE operations: Store old values before deletion
+    IF DELETING THEN
+        INSERT INTO Library_Audit VALUES (
+            audit_seq.NEXTVAL,           -- Auto-generated audit ID
+            :OLD.Roll_no,                -- Old roll number
+            :OLD.name,                   -- Old name
+            :OLD.issuedate,              -- Old issue date
+            :OLD.book,                   -- Old book
+            :OLD.status,                 -- Old status
+            'DELETE',                    -- Operation type
+            SYSTIMESTAMP                 -- Current timestamp
+        );
+    END IF;
+END;
+/
+
+-- =====================================================
+-- TEST THE TRIGGER
+-- =====================================================
+
+-- Test 1: UPDATE operation
+SELECT 'TEST 1: UPDATE Operation' AS Info FROM DUAL;
+UPDATE Library SET name = 'Sita Sharma', status = 'R' WHERE Roll_no = 101;
+
+-- Check main table after update
+SELECT 'Library table after UPDATE:' AS Info FROM DUAL;
+SELECT * FROM Library WHERE Roll_no = 101;
+
+-- Check audit table
+SELECT 'Audit table after UPDATE:' AS Info FROM DUAL;
+SELECT Audit_ID, Roll_no, name, book, status, Operation, 
+       TO_CHAR(Operation_Date, 'DD-MON-YYYY HH24:MI:SS') AS Operation_Time
+FROM Library_Audit;
+
+-- Test 2: Another UPDATE operation
+SELECT 'TEST 2: Another UPDATE Operation' AS Info FROM DUAL;
+UPDATE Library SET book = 'ML', status = 'R' WHERE Roll_no = 102;
+
+-- Test 3: DELETE operation
+SELECT 'TEST 3: DELETE Operation' AS Info FROM DUAL;
+DELETE FROM Library WHERE Roll_no = 103;
+
+-- =====================================================
+-- VIEW FINAL RESULTS
+-- =====================================================
+
+-- Current Library table
+SELECT 'Current Library Data:' AS Info FROM DUAL;
+SELECT Roll_no, name, TO_CHAR(issuedate, 'DD-MON-YYYY') AS Issue_Date, book, status
+FROM Library 
+ORDER BY Roll_no;
+
+-- Complete Audit Trail
+SELECT 'Complete Audit Trail:' AS Info FROM DUAL;
+SELECT Audit_ID, Roll_no, name, book, status, Operation,
+       TO_CHAR(Operation_Date, 'DD-MON-YYYY HH24:MI:SS') AS Operation_Time
+FROM Library_Audit 
+ORDER BY Audit_ID;
+
+-- Summary of operations
+SELECT 'Audit Summary:' AS Info FROM DUAL;
+SELECT Operation, COUNT(*) AS Count
+FROM Library_Audit
+GROUP BY Operation;
+
+-- =====================================================
+-- TRIGGER EXPLANATION:
+-- =====================================================
+/*
+TRIGGER TYPES DEMONSTRATED:
+
+1. ROW LEVEL TRIGGER:
+   - Fires once for each row affected
+   - Uses FOR EACH ROW clause
+   - Can access :OLD and :NEW values
+
+2. BEFORE TRIGGER:
+   - Executes before the DML operation
+   - Can access original values using :OLD
+   - Perfect for audit trails
+
+3. TRIGGER EVENTS:
+   - UPDATE: Captures old values before modification
+   - DELETE: Captures values before deletion
+
+HOW IT WORKS:
+1. When UPDATE happens: Old values stored in audit table
+2. When DELETE happens: Deleted values stored in audit table
+3. Each audit record gets unique ID and timestamp
+
+EXPECTED RESULTS:
+- Audit table will contain old values of updated/deleted records
+- Each operation is tracked with timestamp
+- Original data is preserved for compliance/recovery
+
+TRIGGER FEATURES:
+- :OLD - refers to original values before change
+- :NEW - refers to new values after change (for updates)
+- UPDATING/DELETING - conditional predicates
+- SYSTIMESTAMP - current system timestamp
+*/

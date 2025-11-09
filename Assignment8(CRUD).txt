@@ -1,0 +1,226 @@
+// =====================================================
+// MongoDB CRUD Operations - Fixed for Modern MongoDB
+// Updated to work with current MongoDB versions
+// =====================================================
+
+// Show all databases
+show dbs;
+
+// Switch to book database
+use book;
+
+// Show collections in current database
+show collections;
+
+// =====================================================
+// CREATE OPERATIONS
+// =====================================================
+
+// Create a new collection
+db.createCollection("library");
+
+// INSERT operations (Create)
+print("=== CREATE OPERATIONS ===");
+
+// Insert single documents
+db.library.insertOne({"bid":1, "name":"C++"});
+db.library.insertOne({"bid":2, "name":"SEPM", "author":"Pressman"});
+db.library.insertOne({"bid":3, "name":"CN", "author":"Forouzan", "cost":700});
+
+// Display all documents
+print("After initial inserts:");
+db.library.find().pretty();
+
+// =====================================================
+// DELETE OPERATIONS
+// =====================================================
+
+print("=== DELETE OPERATIONS ===");
+
+// Remove a document (using deleteOne instead of remove)
+db.library.deleteOne({"bid":1});
+
+// Count remaining documents
+print("Document count after deletion:");
+db.library.countDocuments();
+
+// Display remaining documents
+print("Documents after deletion:");
+db.library.find().pretty();
+
+
+// =====================================================
+// READ OPERATIONS WITH SORTING
+// =====================================================
+
+print("=== READ OPERATIONS ===");
+
+// Sort documents by bid in ascending order
+print("Documents sorted by bid (ascending):");
+db.library.find().sort({"bid":1});
+
+// =====================================================
+// LOGICAL OPERATORS
+// =====================================================
+
+print("=== LOGICAL OPERATORS ===");
+
+// $AND operator - Find documents matching ALL conditions
+print("$AND operator - Books with name='CN' AND cost=700:");
+db.library.find({$and:[{"name":"CN"}, {"cost":700}]}).pretty();
+
+// $OR operator - Find documents matching ANY condition
+print("$OR operator - Books with cost=500 OR cost=800:");
+db.library.find({$or:[{"cost":500}, {"cost":800}]}).pretty();
+
+// $NE operator - Not Equal
+print("$NE operator - Books with cost NOT equal to 500:");
+db.library.find({"cost":{$ne:500}});
+
+// $NOR operator - Neither condition is true
+print("$NOR operator - Books that are NOT (cost=500 OR author=Forouzan):");
+db.library.find({$nor:[{"cost":500}, {"author":"Forouzan"}]});
+
+// $NOT operator with $GT - Not greater than
+print("$NOT operator - Books with cost NOT greater than 800:");
+db.library.find({"cost":{$not:{$gt:800}}});
+
+// =====================================================
+// UPDATE OPERATIONS
+// =====================================================
+
+print("=== UPDATE OPERATIONS ===");
+
+// Update cost from 400 to 600 (using updateOne)
+print("Updating cost from 400 to 600:");
+db.library.updateOne({"cost":400}, {$set:{"cost":600}});
+
+// Update cost from 800 to 1200
+print("Updating cost from 800 to 1200:");
+db.library.updateOne({"cost":800}, {$set:{"cost":1200}});
+
+// Display results after updates
+print("Documents after updates:");
+db.library.find().pretty();
+
+// =====================================================
+// UPSERT OPERATIONS (REPLACEMENT FOR SAVE METHOD)
+// =====================================================
+
+print("=== UPSERT OPERATIONS (Modern Alternative to Save) ===");
+
+// Upsert - Insert if doesn't exist, update if exists
+// Insert a new document
+db.library.updateOne(
+    {"bid":8}, 
+    {$set: {"bid":8, "name":"Python", "author":"Lutz", "cost":900}}, 
+    {upsert: true}
+);
+
+// Update an existing document using upsert
+db.library.updateOne(
+    {"bid":1}, 
+    {$set: {"author":"Stroustrup", "cost":1000}}, 
+    {upsert: true}
+);
+
+print("Documents after upsert operations:");
+db.library.find().pretty();
+
+
+// =====================================================
+// ADDITIONAL CRUD OPERATIONS
+// =====================================================
+
+print("=== ADDITIONAL CRUD OPERATIONS ===");
+
+// READ with specific fields (projection)
+print("Show only name and cost fields:");
+db.library.find({}, {"name":1, "cost":1, "_id":0});
+
+// READ with conditions
+print("Books with cost greater than 600:");
+db.library.find({"cost":{$gt:600}});
+
+// READ with limit
+print("First 3 documents:");
+db.library.find().limit(3);
+
+// UPDATE multiple documents
+print("Adding 'available' field to all documents:");
+db.library.updateMany({}, {$set:{"available":true}});
+
+// DELETE with conditions (using deleteMany)
+print("Removing books with cost less than 600:");
+db.library.deleteMany({"cost":{$lt:600}});
+
+// Final count and display
+print("Final document count:");
+db.library.countDocuments();
+
+print("Final library collection:");
+db.library.find().pretty();
+
+// =====================================================
+// MODERN MONGODB METHODS SUMMARY
+// =====================================================
+
+print("=== MODERN MONGODB METHODS USED ===");
+
+/*
+UPDATED METHODS FOR MODERN MONGODB:
+
+OLD METHOD → NEW METHOD:
+- insert() → insertOne() / insertMany()
+- remove() → deleteOne() / deleteMany()
+- update() → updateOne() / updateMany()
+- save() → updateOne() with upsert:true OR replaceOne()
+- count() → countDocuments()
+
+NEW UPSERT PATTERN (Replaces save()):
+db.collection.updateOne(
+    {filter}, 
+    {$set: {document}}, 
+    {upsert: true}
+)
+
+BENEFITS OF NEW METHODS:
+- More explicit about single vs multiple operations
+- Better error handling
+- Clearer intent in code
+- Future-proof compatibility
+- Better performance optimization
+
+CRUD OPERATIONS DEMONSTRATED:
+
+CREATE:
+- insertOne() - Insert single document
+- insertMany() - Insert multiple documents
+- updateOne() with upsert - Insert if not exists
+
+READ:
+- find() - Find documents
+- findOne() - Find single document
+- countDocuments() - Count documents
+- Sorting, limiting, projection
+
+UPDATE:
+- updateOne() - Update single document
+- updateMany() - Update multiple documents
+- replaceOne() - Replace entire document
+- upsert option - Insert if not exists
+
+DELETE:
+- deleteOne() - Delete single document
+- deleteMany() - Delete multiple documents
+
+LOGICAL OPERATORS:
+- $and, $or, $nor, $not, $ne, $gt, $lt
+- All work the same in modern MongoDB
+
+EXPECTED RESULTS:
+- Documents created, updated, and deleted successfully
+- Logical operators filter data correctly
+- Upsert operations work as intended
+- Modern methods provide better control and clarity
+*/

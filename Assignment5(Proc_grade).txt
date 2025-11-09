@@ -1,0 +1,187 @@
+-- =====================================================
+-- COMPLETE WORKING VERSION
+-- =====================================================
+CREATE TABLE Stud_Marks(
+    name VARCHAR2(50),
+    total_marks NUMBER(10)
+);
+INSERT INTO Stud_Marks VALUES ('Aryan', 1200);
+INSERT INTO Stud_Marks VALUES ('Neha', 950);
+INSERT INTO Stud_Marks VALUES ('Rahul', 850);
+INSERT INTO Stud_Marks VALUES ('Priya', 750);
+
+-- Check all data
+SELECT * FROM Stud_Marks;
+
+-- Create Result table
+CREATE TABLE Result(
+    Roll NUMBER(10),
+    Name VARCHAR2(50),
+    Class VARCHAR2(50)
+);
+
+-- Create the complete procedure
+CREATE OR REPLACE PROCEDURE proc_Grade(
+    student_name IN VARCHAR2,
+    roll_number IN NUMBER
+) 
+IS
+    marks NUMBER(10);
+    grade_class VARCHAR2(50);
+BEGIN
+    -- Get student marks
+    SELECT total_marks INTO marks 
+    FROM Stud_Marks 
+    WHERE name = student_name;
+    
+    -- Grade categorization as per requirements
+    IF marks <= 1500 AND marks >= 990 THEN
+        grade_class := 'DISTINCTION';
+    ELSIF marks <= 989 AND marks >= 900 THEN
+        grade_class := 'FIRST CLASS';
+    ELSIF marks <= 899 AND marks >= 825 THEN
+        grade_class := 'HIGHER SECOND CLASS';
+    ELSE
+        grade_class := 'PASS CLASS';
+    END IF;
+    
+    -- Insert into Result table
+    INSERT INTO Result VALUES (roll_number, student_name, grade_class);
+    COMMIT;
+    
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Student not found: ' || student_name);
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END proc_Grade;
+/
+
+-- Enable output
+SET SERVEROUTPUT ON;
+
+-- PL/SQL Block to use the procedure
+DECLARE
+    student_name VARCHAR2(50);
+    roll_num NUMBER(10);
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== PROCESSING STUDENTS ===');
+    
+    -- Process each student
+    student_name := 'Aryan';
+    roll_num := 101;
+    proc_Grade(student_name, roll_num);
+    DBMS_OUTPUT.PUT_LINE('Processed: ' || student_name);
+    
+    student_name := 'Neha';
+    roll_num := 102;
+    proc_Grade(student_name, roll_num);
+    DBMS_OUTPUT.PUT_LINE('Processed: ' || student_name);
+    
+    student_name := 'Rahul';
+    roll_num := 103;
+    proc_Grade(student_name, roll_num);
+    DBMS_OUTPUT.PUT_LINE('Processed: ' || student_name);
+    
+    student_name := 'Priya';
+    roll_num := 104;
+    proc_Grade(student_name, roll_num);
+    DBMS_OUTPUT.PUT_LINE('Processed: ' || student_name);
+    
+    DBMS_OUTPUT.PUT_LINE('=== ALL STUDENTS PROCESSED ===');
+END;
+/
+
+-- Display final results
+SELECT 'FINAL RESULTS:' AS INFO FROM DUAL;
+SELECT Roll, Name, Class FROM Result ORDER BY Roll;
+
+-- Display detailed report
+SELECT 'DETAILED REPORT:' AS INFO FROM DUAL;
+SELECT R.Roll, R.Name, S.total_marks, R.Class
+FROM Result R, Stud_Marks S
+WHERE R.Name = S.name
+ORDER BY S.total_marks DESC;
+
+/*
+STUDENT GRADING SYSTEM EXPLANATION:
+
+1. DATABASE STRUCTURE:
+   - Stud_Marks Table: Stores student names and their total marks
+   - Result Table: Stores roll numbers, names, and calculated grades
+   - Relationship: One student can have one grade classification
+
+2. STORED PROCEDURE (proc_Grade):
+   
+   a) INPUT PARAMETERS:
+      - student_name: Name of the student to be graded
+      - roll_number: Roll number to be assigned
+   
+   b) LOCAL VARIABLES:
+      - marks: Stores the retrieved marks from database
+      - grade_class: Stores the calculated grade classification
+   
+   c) PROCESSING LOGIC:
+      - Retrieves marks for the given student name
+      - Applies grading criteria using IF-ELSIF-ELSE structure
+      - Inserts result into Result table
+      - Commits the transaction
+
+3. GRADING CRITERIA:
+   - DISTINCTION: 990-1500 marks (Excellent performance)
+   - FIRST CLASS: 900-989 marks (Very good performance)
+   - HIGHER SECOND CLASS: 825-899 marks (Good performance)
+   - PASS CLASS: Below 825 marks (Satisfactory performance)
+
+4. ERROR HANDLING:
+   - NO_DATA_FOUND: Handles case when student name not found
+   - OTHERS: Catches any unexpected errors
+   - Provides meaningful error messages
+
+5. EXECUTION PROCESS:
+   - PL/SQL block calls procedure for each student
+   - Assigns unique roll numbers (101, 102, 103, 104)
+   - Displays processing status for each student
+   - Shows completion message
+
+6. EXPECTED RESULTS:
+   - Aryan (1200 marks): DISTINCTION
+   - Neha (950 marks): FIRST CLASS
+   - Rahul (850 marks): HIGHER SECOND CLASS
+   - Priya (750 marks): PASS CLASS
+
+7. RESULT QUERIES:
+   - Basic Results: Shows roll number, name, and grade
+   - Detailed Report: Includes marks along with grades
+   - Sorted by marks in descending order
+
+8. KEY FEATURES:
+   - Parameterized procedure for reusability
+   - Proper exception handling for robustness
+   - Transaction management with COMMIT
+   - Clear grading criteria implementation
+   - Comprehensive result reporting
+
+9. BENEFITS:
+   - Automated grading process
+   - Consistent grade classification
+   - Easy to modify grading criteria
+   - Scalable for large number of students
+   - Maintains data integrity
+
+10. PRACTICAL APPLICATIONS:
+    - University grading systems
+    - Examination result processing
+    - Student performance analysis
+    - Academic record management
+    - Grade point calculation systems
+
+TECHNICAL CONCEPTS DEMONSTRATED:
+- Stored Procedures with parameters
+- Exception handling in PL/SQL
+- Conditional logic (IF-ELSIF-ELSE)
+- Database transactions (COMMIT)
+- Table joins for reporting
+- Data validation and error management
+- Automated data processing workflows
+*/

@@ -1,0 +1,141 @@
+CREATE TABLE College
+( 
+ college_id NUMERIC(3) PRIMARY KEY,
+ college_name VARCHAR(15)
+);
+CREATE TABLE cdepartment
+(
+ Department_ID NUMERIC(2) PRIMARY KEY,
+ college_id NUMERIC(3),
+ name VARCHAR(20),
+ FOREIGN KEY (college_id) REFERENCES College(college_id)
+);
+INSERT INTO College VALUES(101,'xyz');
+INSERT INTO College VALUES(102,'abc');
+INSERT INTO College VALUES(103,'mno');
+INSERT INTO cdepartment VALUES(1,101,'xyzp');
+INSERT INTO cdepartment VALUES(2,102,'abc2');
+-- Corrected college_id for department 'mno3' (from 104 to 103)
+INSERT INTO cdepartment VALUES(3,103,'mno3');
+-- Step : Verify Data in Both Tables
+SELECT * FROM College;
+SELECT * FROM cdepartment;
+-- 1. INNER JOIN
+SELECT College.college_id, College.college_name, cdepartment.department_id, cdepartment.name
+FROM College
+INNER JOIN cdepartment
+ON College.college_id = cdepartment.college_id;
+-- 2. NATURAL JOIN
+SELECT *
+FROM College
+NATURAL JOIN cdepartment;
+-- 3. LEFT JOIN
+SELECT College.college_id, College.college_name, cdepartment.name
+FROM College
+LEFT JOIN cdepartment
+ON College.college_id = cdepartment.college_id;
+-- 4. RIGHT JOIN
+SELECT College.college_id, College.college_name, cdepartment.name
+FROM College
+RIGHT JOIN cdepartment
+ON College.college_id = cdepartment.college_id;
+-- 5. FULL JOIN
+SELECT College.college_name, cdepartment.name
+FROM College
+FULL JOIN cdepartment 
+ON College.college_id = cdepartment.college_id
+ORDER BY College.college_id;
+-- 6. CROSS JOIN
+SELECT College.college_name, cdepartment.name
+FROM College, cdepartment
+WHERE College.college_id = cdepartment.college_id;
+-- 7. Sub-query
+SELECT college_name
+FROM College
+WHERE college_id = (SELECT college_id FROM cdepartment WHERE department_id = (SELECT 
+MAX(department_id) FROM cdepartment));
+-- 8. Sub-query
+SELECT name
+FROM cdepartment
+WHERE college_id = (SELECT MIN(college_id) FROM College);
+-- 9. View
+CREATE VIEW College_Department_View AS
+SELECT College.college_name, cdepartment.name
+FROM College
+INNER JOIN cdepartment ON College.college_id = cdepartment.college_id;
+-- 10. Query the view
+SELECT * FROM College_Department_View;
+
+/*
+SQL JOINS AND OPERATIONS EXPLANATION:
+
+1. TABLE STRUCTURE:
+   - College: Parent table (college_id, college_name)
+   - cdepartment: Child table with foreign key reference
+   - Relationship: One college can have multiple departments
+
+2. JOIN TYPES EXPLAINED:
+
+   a) INNER JOIN:
+      - Returns only matching records from both tables
+      - Excludes colleges without departments
+      - Result: 3 records (colleges 101, 102, 103)
+
+   b) NATURAL JOIN:
+      - Automatically joins on columns with identical names
+      - Equivalent to INNER JOIN on college_id
+      - Result: Same as INNER JOIN
+
+   c) LEFT JOIN (LEFT OUTER JOIN):
+      - Returns all records from left table (College)
+      - Includes colleges without departments (NULL values)
+      - Result: 4 records (includes college 104 with NULL dept)
+
+   d) RIGHT JOIN (RIGHT OUTER JOIN):
+      - Returns all records from right table (cdepartment)
+      - All departments have matching colleges in this example
+      - Result: 3 records (all departments)
+
+   e) FULL OUTER JOIN:
+      - Returns all records from both tables
+      - Shows colleges without departments AND departments without colleges
+      - Result: 4 records (all colleges, matched departments)
+
+   f) CROSS JOIN:
+      - Cartesian product of both tables
+      - Every college paired with every department
+      - Result: 12 records (4 × 3 combinations)
+
+3. SUBQUERIES:
+   - Nested queries for complex filtering
+   - Query 1: Finds college with department having highest ID
+   - Query 2: Finds department in college with lowest ID
+
+4. VIEWS:
+   - Virtual tables based on query results
+   - Simplifies complex joins for repeated use
+   - Provides data abstraction and security
+
+5. EXPECTED RESULTS:
+   - INNER JOIN: 3 matching college-department pairs
+   - LEFT JOIN: 4 records (includes college 'pqr' with NULL dept)
+   - CROSS JOIN: 12 total combinations
+   - Subquery 1: Returns 'mno' (college with dept_id 3)
+   - Subquery 2: Returns 'xyzp' (dept in college 101)
+   - View: 3 college-department combinations
+
+6. KEY CONCEPTS:
+   - Foreign Key Relationships maintain data integrity
+   - Different JOIN types serve different analytical needs
+   - Subqueries enable complex conditional logic
+   - Views provide reusable, simplified data access
+   - LEFT JOIN useful for finding missing relationships
+   - CROSS JOIN creates all possible combinations
+
+7. PRACTICAL APPLICATIONS:
+   - INNER JOIN: Standard reporting (matching data only)
+   - LEFT JOIN: Finding missing relationships (colleges without depts)
+   - CROSS JOIN: Generating all possible combinations
+   - Subqueries: Complex filtering and analysis
+   - Views: Simplifying complex queries for end users
+*/

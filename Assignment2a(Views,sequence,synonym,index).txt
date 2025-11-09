@@ -1,0 +1,90 @@
+CREATE TABLE Employee6
+(
+ emp_id NUMBER(5) PRIMARY KEY,
+ emp_name VARCHAR2(50),
+ dept_id NUMBER(3),
+ salary NUMBER(8, 2)
+);
+CREATE SEQUENCE emp_seq1
+START WITH 1001
+INCREMENT BY 1
+NOCACHE
+NOCYCLE;
+-- Create View for Employees with salary > 50000
+CREATE VIEW Emp_View1 AS
+SELECT emp_name, salary
+FROM Employee6
+WHERE salary > 50000;
+-- Create Index on Employee name
+CREATE INDEX idx_emp_name1 ON Employee6(emp_name);
+-- Create Synonym for Employee table
+CREATE SYNONYM emp_syn1 FOR Employee6;
+-- Create Table Department
+CREATE TABLE Department1
+(
+ dept_id NUMBER(3) PRIMARY KEY,
+ dept_name VARCHAR2(50)
+);
+-- Add Foreign Key Constraint to Employee Table
+ALTER TABLE Employee6
+ADD CONSTRAINT fk_dept
+FOREIGN KEY (dept_id)
+REFERENCES Department1(dept_id);
+-- Insert Data into Employee table using Sequence
+INSERT INTO Employee6 (emp_id, emp_name, dept_id, salary)
+VALUES (emp_seq.NEXTVAL, 'John Doe', 101, 75000);
+-- Insert Data into Department table
+INSERT INTO Department1 (dept_id, dept_name)
+VALUES (101, 'HR');
+-- Select Data from View
+SELECT * FROM Emp_View1;
+-- Select Data from Synonym
+SELECT * FROM emp_syn1;
+
+
+-- =====================================================
+-- EXPLANATION OF DATABASE OBJECTS:
+-- =====================================================
+
+/*
+DATABASE OBJECTS DEMONSTRATED:
+
+1. TABLES:
+   - Employee6: Stores employee information (emp_id, emp_name, dept_id, salary)
+   - Department1: Stores department information (dept_id, dept_name)
+   - Primary keys ensure unique identification of records
+
+2. SEQUENCE (emp_seq1):
+   - Auto-generates unique employee IDs starting from 1001
+   - Increments by 1 for each NEXTVAL call
+   - NOCACHE: Values not pre-allocated in memory
+   - NOCYCLE: Sequence stops when max value reached
+
+3. VIEW (Emp_View1):
+   - Virtual table showing only employees with salary > 50000
+   - Automatically filters data based on WHERE condition
+   - Provides data security and simplified access
+
+4. INDEX (idx_emp_name1):
+   - Created on emp_name column for faster searches
+   - Improves query performance when searching by employee name
+   - Oracle automatically maintains the index
+
+5. SYNONYM (emp_syn1):
+   - Alternative name for Employee6 table
+   - Provides location transparency and easier access
+   - Can be used exactly like the original table
+
+6. CONSTRAINTS:
+   - PRIMARY KEY: Ensures unique identification (emp_id, dept_id)
+   - FOREIGN KEY (fk_dept): Links Employee6.dept_id to Department1.dept_id
+   - Maintains referential integrity between tables
+
+BENEFITS:
+- Sequences ensure unique IDs without conflicts
+- Views provide filtered/secure data access
+- Indexes speed up queries on frequently searched columns
+- Synonyms simplify table access with shorter names
+- Constraints maintain data integrity and relationships
+
+*/

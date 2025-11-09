@@ -1,0 +1,163 @@
+
+-- Merge Cust_New data into Cust_Old (skip duplicates)
+
+
+-- Create customer tables
+CREATE TABLE Cust_Old(
+    Cust_ID NUMBER(10) PRIMARY KEY,
+    Cust_Name VARCHAR2(50),
+    City VARCHAR2(30),
+    Phone VARCHAR2(15)
+);
+
+CREATE TABLE Cust_New(
+    Cust_ID NUMBER(10) PRIMARY KEY,
+    Cust_Name VARCHAR2(50),
+    City VARCHAR2(30),
+    Phone VARCHAR2(15)
+);
+
+-- Insert sample data in Cust_Old (existing customers)
+INSERT INTO Cust_Old VALUES (101, 'Aryan', 'Mumbai', '9876543210');
+INSERT INTO Cust_Old VALUES (102, 'Neha', 'Delhi', '9876543211');
+INSERT INTO Cust_Old VALUES (103, 'Rahul', 'Pune', '9876543212');
+
+-- Insert sample data in Cust_New (new customers + some duplicates)
+INSERT INTO Cust_New VALUES (101, 'Aryan', 'Mumbai', '9876543210');  -- Duplicate
+INSERT INTO Cust_New VALUES (104, 'Priya', 'Chennai', '9876543213'); -- New
+INSERT INTO Cust_New VALUES (105, 'Amit', 'Kolkata', '9876543214');  -- New
+INSERT INTO Cust_New VALUES (102, 'Neha', 'Delhi', '9876543211');    -- Duplicate
+
+-- Display initial data
+SELECT 'Existing Customers (Cust_Old):' AS Info FROM DUAL;
+SELECT * FROM Cust_Old ORDER BY Cust_ID;
+
+SELECT 'New Customers (Cust_New):' AS Info FROM DUAL;
+SELECT * FROM Cust_New ORDER BY Cust_ID;
+
+-- =====================================================
+-- PL/SQL BLOCK WITH PARAMETERIZED CURSOR
+-- =====================================================
+
+DECLARE
+    -- Variables to store cursor data
+    v_cust_id NUMBER(10);
+    v_cust_name VARCHAR2(50);
+    v_city VARCHAR2(30);
+    v_phone VARCHAR2(15);
+    v_count NUMBER(5);
+    
+    -- PARAMETERIZED CURSOR
+    -- Parameter: minimum customer ID to process
+    CURSOR merge_cursor(min_id NUMBER) IS
+        SELECT Cust_ID, Cust_Name, City, Phone
+        FROM Cust_New
+        WHERE Cust_ID >= min_id
+        ORDER BY Cust_ID;
+
+BEGIN
+    -- Enable output
+    DBMS_OUTPUT.ENABLE(1000000);
+    
+    DBMS_OUTPUT.PUT_LINE('=== CUSTOMER DATA MERGE PROCESS ===');
+    DBMS_OUTPUT.PUT_LINE('Using Parameterized Cursor');
+    DBMS_OUTPUT.PUT_LINE('Parameter: Processing customers with ID >= 100');
+    DBMS_OUTPUT.PUT_LINE('');
+    
+    -- Open parameterized cursor with parameter value 100
+    OPEN merge_cursor(100);
+    
+    LOOP
+        -- Fetch data from cursor
+        FETCH merge_cursor INTO v_cust_id, v_cust_name, v_city, v_phone;
+        
+        -- Exit when no more records
+        EXIT WHEN merge_cursor%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE('Processing Customer ID: ' || v_cust_id || ' - ' || v_cust_name);
+        
+        -- Check if customer already exists in Cust_Old
+        SELECT COUNT(*) INTO v_count
+        FROM Cust_Old
+        WHERE Cust_ID = v_cust_id;
+        
+        -- If customer doesn't exist, insert into Cust_Old
+        IF v_count = 0 THEN
+            INSERT INTO Cust_Old VALUES (v_cust_id, v_cust_name, v_city, v_phone);
+            DBMS_OUTPUT.PUT_LINE('  -> INSERTED: New customer added');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('  -> SKIPPED: Customer already exists');
+        END IF;
+        
+        DBMS_OUTPUT.PUT_LINE('');
+        
+    END LOOP;
+    
+    -- Close cursor
+    CLOSE merge_cursor;
+    
+    -- Display summary
+    DBMS_OUTPUT.PUT_LINE('=== MERGE PROCESS COMPLETED ===');
+    DBMS_OUTPUT.PUT_LINE('Total records processed: ' || merge_cursor%ROWCOUNT);
+    
+    -- Commit changes
+    COMMIT;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR: ' || SQLERRM);
+        IF merge_cursor%ISOPEN THEN
+            CLOSE merge_cursor;
+        END IF;
+        ROLLBACK;
+END;
+/
+
+-- =====================================================
+-- VIEW RESULTS
+-- =====================================================
+
+-- Display final merged data
+SELECT 'Final Merged Data (Cust_Old):' AS Info FROM DUAL;
+SELECT Cust_ID, Cust_Name, City, Phone
+FROM Cust_Old 
+ORDER BY Cust_ID;
+
+-- Show count comparison
+SELECT 'Record Count Summary:' AS Info FROM DUAL;
+SELECT 'Cust_Old (Final)' AS Table_Name, COUNT(*) AS Record_Count FROM Cust_Old
+UNION ALL
+SELECT 'Cust_New (Source)' AS Table_Name, COUNT(*) AS Record_Count FROM Cust_New
+ORDER BY Table_Name;
+
+-- =====================================================
+-- EXPLANATION:
+-- =====================================================
+/*
+PARAMETERIZED CURSOR FEATURES:
+
+1. CURSOR DECLARATION:
+   CURSOR merge_cursor(min_id NUMBER) IS
+   - Takes parameter 'min_id' of type NUMBER
+   - Used in WHERE clause to filter records
+
+2. CURSOR OPERATIONS:
+   - OPEN merge_cursor(100): Opens cursor with parameter value 100
+   - FETCH: Retrieves one record at a time
+   - %NOTFOUND: Checks if no more records exist
+   - %ROWCOUNT: Returns number of records processed
+   - %ISOPEN: Checks if cursor is still open
+   - CLOSE: Releases cursor resources
+
+3. MERGE LOGIC:
+   - Reads each record from Cust_New
+   - Checks if it exists in Cust_Old
+   - If not exists: INSERT (merge)
+   - If exists: SKIP (avoid duplicates)
+
+4. EXPECTED RESULTS:
+   Before: Cust_Old has 3 records (101, 102, 103)
+   After:  Cust_Old has 5 records (101, 102, 103, 104, 105)
+   - Records 101, 102 skipped (duplicates)
+   - Records 104, 105 inserted (new customers)
+*/

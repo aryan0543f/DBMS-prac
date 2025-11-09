@@ -1,0 +1,93 @@
+// MongoDB Aggregation and Indexing - Simple Commands
+// Copy these commands one by one into MongoDB shell
+
+// 1. SETUP
+show dbs
+use customer
+
+// 2. INSERT DATA
+db.cust_table.insert({Item_id:1,Cust_Name:"Ram",Product:"Milk",Amount:40})
+db.cust_table.insert({Item_id:2,Cust_Name:"Ram",Product:"Parle_G",Amount:50})
+db.cust_table.insert({Item_id:3,Cust_Name:"Mohan",Product:"Lays Chips",Amount:40})
+db.cust_table.insert({Item_id:4,Cust_Name:"Shivam",Product:"Mentos",Amount:10})
+db.cust_table.insert({Item_id:5,Cust_Name:"Mohan",Product:"Maggie",Amount:60})
+
+// 3. VIEW DATA
+db.cust_table.find().pretty()
+
+// 4. AGGREGATION OPERATIONS
+
+// Total amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$sum:"$Amount"}}}])
+
+// Average amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$avg:"$Amount"}}}])
+
+// Minimum amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$min:"$Amount"}}}])
+
+// Maximum amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$max:"$Amount"}}}])
+
+// First amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$first:"$Amount"}}}])
+
+// Last amount by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$last:"$Amount"}}}])
+
+// All amounts as array
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$push:"$Amount"}}}])
+
+// Count purchases by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$sum:1}}}])
+
+// Unique amounts by customer
+db.cust_table.aggregate([{$group:{_id:"$Cust_Name",total:{$addToSet:"$Amount"}}}])
+
+// 5. INDEXING OPERATIONS
+
+// Create indexes
+db.cust_table.createIndex({Item_id:1})
+db.cust_table.createIndex({Amount:-1})
+db.cust_table.createIndex({Cust_Name:1,Amount:1})
+
+// View indexes
+db.cust_table.getIndexes()
+
+// Drop an index
+db.cust_table.dropIndex({Item_id:1})
+
+// View indexes again
+db.cust_table.getIndexes()
+
+
+// =====================================================
+// EXPLANATION OF CONCEPTS
+// =====================================================
+
+/*
+AGGREGATION FRAMEWORK:
+
+1. $group - Groups documents by specified fields
+2. $sum - Calculates sum of values
+3. $avg - Calculates average of values
+4. $min/$max - Finds minimum/maximum values
+5. $first/$last - Gets first/last value in group
+6. $push - Creates array of all values
+7. $addToSet - Creates array of unique values
+8. $sort - Sorts results
+9. $limit - Limits number of results
+10. $addFields - Adds computed fields
+
+INDEXING CONCEPTS:
+
+1. Single Field Index: {field: 1} (ascending) or {field: -1} (descending)
+2. Compound Index: {field1: 1, field2: 1} (multiple fields)
+3. Text Index: {field: "text"} (for text search)
+4. Index Benefits: Faster queries, sorting, and filtering
+
+INDEX PERFORMANCE:
+- Queries on indexed fields execute faster
+- Text search becomes possible with text indexes
+- Compound indexes help with multi-field queries
+*/
