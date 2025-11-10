@@ -1,0 +1,103 @@
+// MongoDB MapReduce Operations - Simple Copy-Paste Version
+// Copy these commands one by one into MongoDB shell
+
+// 1. SETUP
+show dbs
+use bill
+
+// 2. INSERT PAYMENT DATA
+db.pay.insert({Cust_ID:"A123",Product:"Milk",Amount:40,Status:"P"})
+db.pay.insert({Cust_ID:"A123",Product:"Parle_G",Amount:50,Status:"NP"})
+db.pay.insert({Cust_ID:"A123",Product:"Lays Chips",Amount:40,Status:"P"})
+db.pay.insert({Cust_ID:"B123",Product:"Mentos",Amount:10,Status:"P"})
+db.pay.insert({Cust_ID:"B123",Product:"Maggie",Amount:60,Status:"NP"})
+
+// 3. VIEW ALL DATA
+db.pay.find()
+/* OUTPUT:
+{ "_id" : ObjectId("..."), "Cust_ID" : "A123", "Product" : "Milk", "Amount" : 40, "Status" : "P" }
+{ "_id" : ObjectId("..."), "Cust_ID" : "A123", "Product" : "Parle_G", "Amount" : 50, "Status" : "NP" }
+{ "_id" : ObjectId("..."), "Cust_ID" : "A123", "Product" : "Lays Chips", "Amount" : 40, "Status" : "P" }
+{ "_id" : ObjectId("..."), "Cust_ID" : "B123", "Product" : "Mentos", "Amount" : 10, "Status" : "P" }
+{ "_id" : ObjectId("..."), "Cust_ID" : "B123", "Product" : "Maggie", "Amount" : 60, "Status" : "NP" }
+*/
+
+// 4. MAPREDUCE 1: UNPAID BILLS ONLY (Status = "NP")
+db.pay.aggregate([
+    { $match: { "Status": "NP" } },
+    { $group: { 
+        _id: "$Cust_ID", 
+        totalAmount: { $sum: "$Amount" } 
+    }}
+])
+/* OUTPUT:
+{
+    "result" : "Bill_Amount",
+    "timeMillis" : 15,
+    "counts" : {
+        "input" : 2,
+        "emit" : 2,
+        "reduce" : 0,
+        "output" : 2
+    },
+    "ok" : 1
+}
+*/
+
+// 5. VIEW UNPAID BILLS RESULT
+db.Bill_Amount.find()
+/* OUTPUT:
+{ "_id" : "A123", "value" : 50 }
+{ "_id" : "B123", "value" : 60 }
+*/
+
+// 6. MAPREDUCE 2: ALL BILLS (PAID + UNPAID)
+var mapFunc1 = function(){emit(this.Cust_ID,this.Amount);}
+var reduceFunc1 = function(keyCustID,valuePrices){return Array.sum(valuePrices);}
+db.pay.mapReduce(mapFunc1,reduceFunc1,{out:"Map"})
+/* OUTPUT:
+{
+    "result" : "Map",
+    "timeMillis" : 12,
+    "counts" : {
+        "input" : 5,
+        "emit" : 5,
+        "reduce" : 2,
+        "output" : 2
+    },
+    "ok" : 1
+}
+*/
+
+// 7. VIEW ALL BILLS RESULT
+db.Map.find()
+/* OUTPUT:
+{ "_id" : "A123", "value" : 130 }
+{ "_id" : "B123", "value" : 70 }
+*/
+
+
+// 10. CLEANUP (Optional)
+// Drop the temporary collections
+db.Bill_Amount.drop()
+db.Map.drop()
+db.Customer_Product_Count.drop()
+db.Product_Sales.drop()
+db.Status_Totals.drop()
+db.Customer_Details.drop()
+
+// =====================================================
+// SUMMARY OF RESULTS:
+// =====================================================
+
+/*
+MAPREDUCE RESULTS SUMMARY:
+
+
+MAPREDUCE COMPONENTS:
+- MAP FUNCTION: Emits key-value pairs
+- REDUCE FUNCTION: Aggregates values for each key
+- FINALIZE FUNCTION (Optional): Transforms the final output 
+ADVANCED MAPREDUCE EXAMPLE:
+- Customer payment details: Total, Paid, Unpaid, and list of products
+*/
