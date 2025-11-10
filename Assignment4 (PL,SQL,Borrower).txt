@@ -1,0 +1,188 @@
+CREATE TABLE Borrower(
+    Roll NUMBER(10) PRIMARY KEY,
+    Name VARCHAR2(50),
+    DateofIssue DATE,
+    NameofBook VARCHAR2(50),
+    Status CHAR(1) CHECK (Status IN ('I', 'R'))  -- I=Issued, R=Returned
+);
+CREATE TABLE Fine(
+    Roll NUMBER(10),
+    Fine_Date DATE,
+    Amt NUMBER(10)
+);
+INSERT INTO Borrower VALUES (101, 'Aryan', TO_DATE('01-Oct-2024', 'DD-MON-YYYY'), 'Java Programming', 'I');
+INSERT INTO Borrower VALUES (102, 'Neha', TO_DATE('15-Sep-2024', 'DD-MON-YYYY'), 'Database Systems', 'I');
+INSERT INTO Borrower VALUES (103, 'Rahul', TO_DATE('10-Aug-2024', 'DD-MON-YYYY'), 'Data Structures', 'I');
+-- Display initial data
+SELECT * FROM Borrower;
+
+DECLARE
+    -- Variables to accept user input
+    user_roll NUMBER(10);
+    user_book VARCHAR2(50);
+    
+    -- Variables for processing
+    issue_date DATE;
+    days_count NUMBER(5);
+    fine_amount NUMBER(10) := 0;
+    
+    -- Custom exceptions
+    invalid_input EXCEPTION;
+    
+BEGIN
+    -- Enable output display
+    DBMS_OUTPUT.ENABLE(1000000);
+    
+    DBMS_OUTPUT.PUT_LINE('=== LIBRARY BOOK RETURN SYSTEM ===');
+    DBMS_OUTPUT.PUT_LINE('');
+    
+    -- Accept input from user
+    DBMS_OUTPUT.PUT_LINE('Please enter the following details:');
+    user_roll := &roll_number;  -- User will be prompted to enter roll number
+    user_book := '&book_name';  -- User will be prompted to enter book name
+    
+    -- Input validation
+    IF user_roll IS NULL OR user_roll <= 0 THEN
+        RAISE invalid_input;
+    END IF;
+    
+    IF user_book IS NULL OR LENGTH(TRIM(user_book)) = 0 THEN
+        RAISE invalid_input;
+    END IF;
+    
+    DBMS_OUTPUT.PUT_LINE('Processing return for:');
+    DBMS_OUTPUT.PUT_LINE('Roll Number: ' || user_roll);
+    DBMS_OUTPUT.PUT_LINE('Book Name: ' || user_book);
+    DBMS_OUTPUT.PUT_LINE('');
+    
+    -- Exception handling block
+    BEGIN
+        -- Find the book issue record
+        SELECT DateofIssue INTO issue_date 
+        FROM Borrower 
+        WHERE Roll = user_roll 
+          AND NameofBook = user_book 
+          AND Status = 'I';
+        
+        DBMS_OUTPUT.PUT_LINE('Book found! Issue Date: ' || TO_CHAR(issue_date, 'DD-MON-YYYY'));
+        
+        -- Calculate number of days
+        days_count := TRUNC(SYSDATE - issue_date);
+        DBMS_OUTPUT.PUT_LINE('Days since issue: ' || days_count);
+        
+        -- CONTROL STRUCTURE: IF-ELSIF-ELSE for fine calculation
+        -- According to requirements: 15-30 days = Rs.5/day, >30 days = Rs.50/day, <15 days = No fine
+        IF days_count < 15 THEN
+            -- No fine for less than 15 days
+            fine_amount := 0;
+            DBMS_OUTPUT.PUT_LINE('No fine - Book returned within 15 days');
+            
+        ELSIF days_count >= 15 AND days_count <= 30 THEN
+            -- Rs. 5 per day for 15-30 days (including 15th day)
+            fine_amount := days_count * 5;
+            DBMS_OUTPUT.PUT_LINE('Fine: Rs. 5 per day for ' || days_count || ' days');
+            
+        ELSE
+            -- days_count > 30
+            -- Rs. 5 per day for first 30 days + Rs. 50 per day for days > 30
+            fine_amount := (30 * 5) + ((days_count - 30) * 50);
+            DBMS_OUTPUT.PUT_LINE('High fine: Rs. 5 per day for first 30 days + Rs. 50 per day for ' || (days_count - 30) || ' days over 30');
+        END IF;
+        
+        DBMS_OUTPUT.PUT_LINE('Total Fine Amount: Rs. ' || fine_amount);
+        DBMS_OUTPUT.PUT_LINE('');
+        
+        -- Update book status from 'I' to 'R'
+        UPDATE Borrower 
+        SET Status = 'R' 
+        WHERE Roll = user_roll AND NameofBook = user_book;
+        
+        DBMS_OUTPUT.PUT_LINE('Book status updated to RETURNED');
+        
+        -- CONTROL STRUCTURE: IF condition to insert fine record
+        IF fine_amount > 0 THEN
+            -- Insert fine record only if there is a fine
+            INSERT INTO Fine VALUES (user_roll, SYSDATE, fine_amount);
+            DBMS_OUTPUT.PUT_LINE('Fine record added to Fine table');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('No fine record needed');
+        END IF;
+        
+        -- Commit the transaction
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('');
+        DBMS_OUTPUT.PUT_LINE('SUCCESS: Book return completed successfully!');
+        
+    EXCEPTION
+        -- EXCEPTION HANDLING: Handle invalid input
+        WHEN invalid_input THEN
+            DBMS_OUTPUT.PUT_LINE('ERROR: Invalid input provided!');
+            DBMS_OUTPUT.PUT_LINE('Please ensure:');
+            DBMS_OUTPUT.PUT_LINE('- Roll number is a positive number');
+            DBMS_OUTPUT.PUT_LINE('- Book name is not empty');
+            ROLLBACK;
+            
+        -- EXCEPTION HANDLING: Handle when book not found
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('ERROR: Book not found or already returned!');
+            DBMS_OUTPUT.PUT_LINE('Please check:');
+            DBMS_OUTPUT.PUT_LINE('- Roll number is correct');
+            DBMS_OUTPUT.PUT_LINE('- Book name is correct');
+            DBMS_OUTPUT.PUT_LINE('- Book status is ISSUED (not already returned)');
+            ROLLBACK;
+            
+        -- EXCEPTION HANDLING: Handle any other errors
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('ERROR: Something went wrong!');
+            DBMS_OUTPUT.PUT_LINE('Error Code: ' || SQLCODE);
+            DBMS_OUTPUT.PUT_LINE('Error Message: ' || SQLERRM);
+            ROLLBACK;
+    END;
+    
+END;
+/
+
+SELECT Roll, Name, NameofBook, 
+       TO_CHAR(DateofIssue, 'DD-MON-YYYY') AS IssueDate,
+       CASE Status 
+           WHEN 'I' THEN 'ISSUED' 
+           WHEN 'R' THEN 'RETURNED' 
+       END AS BookStatus
+FROM Borrower
+ORDER BY Roll;
+
+-- Show Fine records
+SELECT 'Fine Records:' AS Info FROM DUAL;
+SELECT Roll, TO_CHAR(Fine_Date, 'DD-MON-YYYY') AS FineDate, Amt AS FineAmount
+FROM Fine
+ORDER BY Roll;
+
+/*
+FINE CALCULATION LOGIC (As per requirements):
+- Days < 15:     No Fine
+- Days 15-30:    Rs. 5 per day
+- Days > 30:     Rs. 5 per day for first 30 days + Rs. 50 per day for days over 30
+
+Example:
+- 10 days: No fine
+- 20 days: 20 * 5 = Rs. 100
+- 35 days: (30 * 5) + (5 * 50) = Rs. 150 + Rs. 250 = Rs. 400
+
+USER INPUT:
+- When you run this code, you'll be prompted to enter:
+  1. Roll number (e.g., 102)
+  2. Book name (e.g., Database Systems)
+
+CONTROL STRUCTURES USED:
+1. IF-ELSIF-ELSE for fine calculation
+2. IF condition for fine record insertion
+
+EXCEPTION HANDLING USED:
+1. NO_DATA_FOUND - when book record not found
+2. OTHERS - for any unexpected errors
+
+HOW TO RUN:
+1. Execute the entire script
+2. When prompted, enter roll number (e.g., 102)
+3. When prompted, enter book name (e.g., Database Systems)
+*/
